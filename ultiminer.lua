@@ -6,6 +6,7 @@ local SQUARE_HEIGHT = 3
 local LIGHT_RIGHT = 0
 local LIGHT_LEFT = 1
 local TURTLE_INV_SIZE = 16
+-- End Consts
 
 -- Config
 local CLEAN_INV_ENABLE = true
@@ -21,6 +22,47 @@ local LIGHT_DISTANCE = 6
 local LIGHT_ALTERNATE = false
 -- End Config
 
+-- Utility functions
+-- Get name from inspect()'s data table
+local function getBlockName(data)
+	if(not data) then
+		return nil
+	elseif(not data.name) then
+		return nil
+	end
+
+	return data.name:match(":(.+)"):lower()
+end
+
+-- Check if any of a str table's indeces are substrings of a given string
+local function isTableSubstring(string, strTable)
+	if(type(strTable) ~= "table" or not string) then
+		return false
+	end
+
+	for index, str in pairs(strTable) do
+		if(string:find(str)) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Check if any of a str table's indeces match the given string
+local function isTableMatch(string, strTable)
+	if(type(strTable) ~= "table" or not string) then
+		return false
+	end
+
+	for index, str in pairs(strTable) do
+		if(str == string) then
+			return true
+		end
+	end
+	return false
+end
+-- End Utility functions4mT1Gsr
+
 -- MinerTurtle class
 local MinerTurtle = {}
 	MinerTurtle.__index = MinerTurtle
@@ -30,54 +72,13 @@ local MinerTurtle = {}
 		end,
 	})
 
-	-- Utility functions
-	-- Get name from inspect()'s data table
-	function MinerTurtle.getBlockName(self, data)
-		if(not data) then
-			return nil
-		elseif(not data.name) then
-			return nil
-		end
-
-		return data.name:match(":(.+)"):lower()
-	end
-
-	-- Check if any of a str table's indeces are substrings of a given string
-	function MinerTurtle.isTableSubstring(self, string, strTable)
-		if(type(strTable) ~= "table" or not string) then
-			return false
-		end
-
-		for index, str in pairs(strTable) do
-			if(string:find(str)) then
-				return true
-			end
-		end
-		return false
-	end
-
-	-- Check if any of a str table's indeces match the given string
-	function MinerTurtle.isTableMatch(self, string, strTable)
-		if(type(strTable) ~= "table" or not string) then
-			return false
-		end
-
-		for index, str in pairs(strTable) do
-			if(str == string) then
-				return true
-			end
-		end
-		return false
-	end
-	-- End Utility functions
-
 	-- Drops non-fuel, non-light inventory items into a chest
 	function MinerTurtle.depositInv(self)
 		-- Determine if the front block is a chest
 		local function isChest(chestSubstrings)
 			local status, data = turtle.inspect()
 
-			if(not self:isTableSubstring(self:getBlockName(data), chestSubstrings)) then
+			if(not isTableSubstring(getBlockName(data), chestSubstrings)) then
 				print("No chest available")
 				return false
 			end
@@ -94,7 +95,7 @@ local MinerTurtle = {}
 		for index=1, self.invSize do
 			turtle.select(index)
 			local item = turtle.getItemDetail()
-			if(not turtle.refuel(0) and not self:isTableMatch(self:getBlockName(item), self.lightBlocks)) then
+			if(not turtle.refuel(0) and not isTableMatch(getBlockName(item), self.lightBlocks)) then
 				turtle.drop()
 			end
 		end
@@ -105,7 +106,7 @@ local MinerTurtle = {}
 		for index=1, self.invSize do
 			turtle.select(index)
 			local item = turtle.getItemDetail()
-			if(self:isTableMatch(self:getBlockName(item), self.dropBlocks)) then
+			if(isTableMatch(getBlockName(item), self.dropBlocks)) then
 				turtle.drop()
 			end
 		end
@@ -154,7 +155,7 @@ local MinerTurtle = {}
 			while(index <= self.invSize and not isPlaceable) do
 				turtle.select(index)
 				local item = turtle.getItemDetail()
-				if(self:isTableSubstring(self:getBlockName(item), self.placeSubstrings)) then
+				if(isTableSubstring(getBlockName(item), self.placeSubstrings)) then
 					isPlaceable = true
 				end
 				index = index + 1
@@ -227,7 +228,7 @@ local MinerTurtle = {}
 			return false
 		end
 
-		if(status and not self:isTableMatch(self:getBlockName(data), self.liquidBlocks)) then
+		if(status and not isTableMatch(getBlockName(data), self.liquidBlocks)) then
 			return self:dig(direction)
 		else
 			return true
@@ -327,7 +328,7 @@ local MinerTurtle = {}
 		while(index <= self.invSize and not hasTorched) do
 			turtle.select(index)
 			local item = turtle.getItemDetail()
-			if(self:isTableMatch(self:getBlockName(item), self.lightBlocks)) then
+			if(isTableMatch(getBlockName(item), self.lightBlocks)) then
 				hasTorched = turtle.place()
 			end
 			index = index + 1
@@ -387,32 +388,32 @@ local MinerTurtle = {}
 		-- Tries to stop liquid blocks in front of and above the turtle
 		local function attemptStopLiquid()
 			local status, data = turtle.inspectUp()	-- above
-			if(self:isTableMatch(self:getBlockName(data), self.liquidBlocks)) then
+			if(isTableMatch(getBlockName(data), self.liquidBlocks)) then
 				self:placeBlock("up")
 			end
 
 			status, data = turtle.inspectDown() -- below
-			if(self:isTableMatch(self:getBlockName(data), self.liquidBlocks)) then
+			if(isTableMatch(getBlockName(data), self.liquidBlocks)) then
 				self:placeBlock("down")
 			end
 
 			status, data = turtle.inspect()	-- forward
-			if(self:isTableMatch(self:getBlockName(data), self.liquidBlocks)) then
+			if(isTableMatch(getBlockName(data), self.liquidBlocks)) then
 				-- Try to patch forward and above blocks if they're liquid as well
 				self:move("forward")
 
 				status, data = turtle.inspectDown() -- below
-				if(self:isTableMatch(self:getBlockName(data), self.liquidBlocks)) then
+				if(isTableMatch(getBlockName(data), self.liquidBlocks)) then
 					self:placeBlock("down")
 				end
 
 				status, data = turtle.inspect() -- forward-most
-				if(self:isTableMatch(self:getBlockName(data), self.liquidBlocks)) then
+				if(isTableMatch(getBlockName(data), self.liquidBlocks)) then
 					self:placeBlock("forward")
 				end
 
 				status, data = turtle.inspectUp() -- above
-				if(self:isTableMatch(self:getBlockName(data), self.liquidBlocks)) then
+				if(isTableMatch(getBlockName(data), self.liquidBlocks)) then
 					self:placeBlock("up")
 				end
 
@@ -446,7 +447,7 @@ local MinerTurtle = {}
 		-- Make sure there isn't any gravel or sand above
 		if(self.squareType == UP_SQUARE) then
 			local status, data = turtle.inspectUp()
-			if(self:isTableMatch(self:getBlockName(data), self.gravityBlocks)) then
+			if(isTableMatch(getBlockName(data), self.gravityBlocks)) then
 				self:dig("up")
 			end
 		end
